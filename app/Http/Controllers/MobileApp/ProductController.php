@@ -93,7 +93,7 @@ else if($id==3) {
                 $product->productAttributes = ProductAttribute::where('product_id', $product->id)->select('id', 'thickness', 'weight', 'price')->get();
          }
          
-      return response()->json(['status' => 'success', 'data' => ['subCategories'=>$subCategories, 'products'=>$products]]);
+      return response()->json(['status' => 'success', 'data' => ['subCategories'=>$subCategories,'test'=>'helloo', 'products'=>$products]]);
     }
     
     

@@ -246,6 +246,7 @@ trait CartTrait
             'length' =>  number_format($product->length,  2),
             'sub_total' => number_format((($category->price + $attribute->price) * ($attribute->weight * $product->length)), 2),
             'cart_product_id' => $product->id,
+            'otherWeight'=>$attribute->weight,
         ];
     }
 

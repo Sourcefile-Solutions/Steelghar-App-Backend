@@ -29,47 +29,34 @@ class WishlistController extends Controller
             else $wishlist = [];
         } else $wishlist = [];
         $wishlistproducts = Product::whereIn('id', $wishlist)->select('product_name', 'product_image',  'category_id', 'id')->get();
-        return response()->json(['status' => 'success','count'=>$wishlistproducts->count(), 'wishlistProducts' => $wishlistproducts]);
+        return response()->json(['status' => 'success', 'count' => $wishlistproducts->count(), 'wishlistProducts' => $wishlistproducts]);
     }
 
 
     public function addToWishlist(Request $request)
     {
-
-
-        $wishlist = Wishlist::where('customer_id', auth()->user()->id)->first();
-
-        if (!$wishlist) $wishlist = Wishlist::create([
-            'customer_id' => auth()->user()->id,
-            'products' => json_encode([])
+        $request->validate([
+            'product_id' => 'required|integer'
         ]);
+        $user = auth()->user();
 
+        $products = json_decode($user->wishlists);
 
-        if ($wishlist->products) {
-            $products = json_decode($wishlist->products);
+        if (in_array($request->product_id, $products)) {
 
-            if (in_array($request->product_id, $products)) {
+            $valueToRemove = $request->product_id;
+            $products = array_filter($products, function ($value) use ($valueToRemove) {
+                return $value != $valueToRemove;
+            });
 
-                $valueToRemove = $request->product_id;
-                $products = array_filter($products, function ($value) use ($valueToRemove) {
-                    return $value != $valueToRemove;
-                });
-
-                if (count(array_values($products))) $wishlist->products = json_encode(array_values($products));
-                else $wishlist->products = json_encode([]);
-                if ($wishlist->save()) return response()->json(['status' => 'success','count'=>$wishlist->count(), 'action' => 'removed', 'message' => 'Product removed from wishlist']);
-                return response()->json(['status' => 'error']);
-            } else {
-
-                $wishlist->products = json_encode([...$products, $request->product_id]);
-                if ($wishlist->save())  return response()->json(['status' => 'success','count'=>$wishlist->count(), 'action' => 'added', 'message' => 'Product Added to wishlist']);
-
-                return response()->json(['status' => 'error']);
-            }
+            if (count(array_values($products))) $user->wishlists = json_encode(array_values($products));
+            else $user->wishlists = json_encode([]);
+            if ($user->save()) return response()->json(['status' => 'success', 'is_wishlist' => false, 'message' => 'Product removed from wishlist']);
+            return response()->json(['status' => 'error']);
         } else {
-            $wishlist->products = json_encode([$request->product_id]);
 
-            if ($wishlist->save()) return response()->json(['status' => 'success','count'=>$wishlist->count(), 'action' => 'added', 'message' => 'Product Added to wishlist']);
+            $user->wishlists = json_encode([...$products, $request->product_id]);
+            if ($user->save())  return response()->json(['status' => 'success', 'is_wishlist' => true, 'message' => 'Product Added to wishlist']);
 
             return response()->json(['status' => 'error']);
         }

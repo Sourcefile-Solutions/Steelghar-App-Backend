@@ -230,7 +230,6 @@ trait CartTrait
     protected function otherProducts($product)
     {
         $attribute = ProductAttribute::find($product->product_attribute_id);
-
         $category = CategoryPrice::where('category_id', $product->product->category_id)->first();
 
         if (!$attribute || !$category) return 0;

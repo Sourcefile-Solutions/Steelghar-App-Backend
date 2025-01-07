@@ -29,9 +29,9 @@ class CartController extends Controller
         // return $cart;
 
         $cartProducts = Cartproduct::where('cart_id', $cart->id)
-            ->join('products', 'cartproducts.product_id', 'products.id')
-            ->select('cartproducts.*','cartproducts.id as cartproduct_id')
-            ->latest()
+            // ->join('products', 'cartproducts.product_id', 'products.id')
+            // ->select('cartproducts.*','cartproducts.id as cartproduct_id')
+            // ->latest()
             ->get();
 
         list($cartData, $amountCalculation) = $this->cartCalculation($cartProducts);
@@ -415,15 +415,13 @@ class CartController extends Controller
             ]);
         } else {
             $validated = $request->validate([
-                'length' => 'required|string',
+                'length' => 'required',
                 'product_attribute_id' => 'required',
             ]);
         }
 
-        // return $validated;
 
         $updated =  $cartproduct->update($validated);
-        // return $p;
 
         if ($updated) return response()->json(['status' => 'success', "data"=>$updated, 'product'=>$product, 'cartProducts'=>$cartproduct, 'message' => 'Cart Updated Successfully!']);
         return response()->json(['status' => 'error', 'message' => 'Failed to update Cart!']);

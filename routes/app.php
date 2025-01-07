@@ -27,7 +27,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/categories', [ProductController::class, 'category']);
     Route::get('/sub-categories/{category_id}', [ProductController::class, 'subcategory']);
     Route::get('/products/{sub_category_id}', [ProductController::class, 'product']);
-    Route::get('/get-product-data', [ProductController::class, 'productData']);
+    // Route::get('/get-product-data', [ProductController::class, 'productData']);
+    Route::get('/get-product-data/{category}/{subcategory?}', [ProductController::class, 'index']);
     
 
     Route::put('profile', [ProfileController::class, 'update']);

@@ -19,101 +19,118 @@ use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
-    
-    
-    public function productData(Request $request){
-      
-        
-        if($request->subcategory_id) return $this->subCategoryOtherProducts($request->subcategory_id);
-        
-        if($request->category_id<4){
-            return $this->categoryProduct($request->category_id);
-        }
-     
-            return $this->otherProduct($request->category_id);
-        
-    
+
+
+    public function index($category = null, $subcategory = null)
+    {
+
+        if ($category && $subcategory) return $this->subcategoryProducts($category, $subcategory);
+
+        else if ($category && !$subcategory) return $this->categoryProducts($category);
     }
-    
-    private function categoryProduct($id){
-       
-        
-    
-    $products=Product::where([['category_id', $id],['status',true]])->get();
-    foreach($products as $product){
-if($id==1){ 
-    
-    $product->brands= Brand::where('status', true)->whereIn('id',json_decode($product->brand))->select('id', 'brand_name', 'price')->get();
-    
-    
+
+
+    protected function categoryProducts($category)
+    {
+        $products = Product::where([['status', true], ['category_id', $category]])->select(
+            'id',
+            'category_id',
+            // 'subcategory_id',
+            'product_name',
+
+            'product_image',
+            'brand',
+
+
+
+            'thickness_id',
+            'low_price'
+        )->latest()->get();
+
+
+        return response()->json(['status' => 'success', 'products' => $this->setupProducts($products)]);
+    }
+
+
+
+    protected function subcategoryProducts($category, $subcategory)
+    {
+
+        $products = Product::where([['status', true], ['category_id',  $category], ['subcategory_id', $subcategory]])->select(
+            'id',
+            'category_id',
+            'subcategory_id',
+            'product_name',
+            'slug',
+            'product_image',
+            'brand',
+            'seo_title',
+            'seo_keyword',
+            'seo_description',
+            'thickness_id',
+            'low_price'
+        )->latest()->get();
+
+
+        return view('public.products.index', ['products' => $this->setupProducts($products)]);
+    }
+
+
+    protected function setupProducts($products)
+    {
+
+        $wislist = json_decode(auth()->user()->wishlists);
+
+        foreach ($products as $product) {
+
+            if ($product->category_id == 1) {;
+                $brands = Brand::whereIn('id', json_decode($product->brand))->where('status', true)->select('id', 'brand_name', 'price')->get();;
                 $tmtweight = Tmtdetail::find($product->thickness_id);
+                $product->weight = $tmtweight->weight;
                 $product->tmtWeight = $tmtweight->weight;
-               
-    
-    
-}
+                $product->brands = $brands;
+                $product->is_wishlist = in_array($product->id, $wislist);
+            } else if ($product->category_id == 2) {
 
-else if($id==2) {
-    $product->category_price=CategoryPrice::where('category_id',2)->value('price');
-    $product->productAttributes=ProductAttribute::where('product_id',$product->id)->select('id','price','height')->get();
-}
 
-else if($id==3) {
-   
-    
-     $product->category_price=CategoryPrice::where('category_id',3)->value('price');
-                $product->productAttributes = ProductAttribute::join('roofing_thicknesses', 'roofing_thicknesses.id', 'product_attributes.thickness')
+                $p = CategoryPrice::where('category_id', $product->category_id)->first();
+                $product->category_price = $p->price;
+                $product->attributes = ProductAttribute::where('product_id', $product->id)->select('id', 'height',  'price')->get();
+
+
+                $product->is_wishlist = in_array($product->id, $wislist);
+            } else if ($product->category_id == 3) {
+
+                $p = CategoryPrice::where('category_id', $product->category_id)->first();
+                $product->category_price = $p->price;
+                $product->attributes = ProductAttribute::join('roofing_thicknesses', 'roofing_thicknesses.id', 'product_attributes.thickness')
                     ->where('product_id', $product->id)->select('product_attributes.id', 'roofing_thicknesses.thickness',  'price', 'formula_value')->get();
 
                 $product->colors = RoofingColor::where('status', true)->get();
-}
 
 
-       
+                $product->is_wishlist = in_array($product->id, $wislist);
+            } else {
+
+                if ($product->subcategory_id) {
+                    $subcategory = Subcategory::find($product->subcategory_id);
+                    $product->subcategory = $subcategory->subcategory_name;
+                }
+                $p = CategoryPrice::where('category_id', $product->category_id)->first();
+                $product->category_price = $p->price;
+
+                $product->attributes = ProductAttribute::where('product_id', $product->id)->select('id', 'thickness', 'weight', 'price')->get();
+
+
+                $product->is_wishlist = in_array($product->id, $wislist);
+            }
+        }
+
+        return $products;
     }
-  
-    // return $products;
-    
-  
 
-    //   return $products;
-      return response()->json(['status' => 'success', 'data' => $products]);
-    }
-    
-     private function otherProduct($id){
-      
-        $subCategories=Subcategory::where([['category_id',$id],['status', true]])->get();
-       
-       $products=Product::where([['category_id', $id],['status',true]])->whereNull('subcategory_id')->get();
-       
-        foreach($products as $product){
-              $product->category_price=CategoryPrice::where('category_id',$id)->value('price');
-               
 
-                $product->productAttributes = ProductAttribute::where('product_id', $product->id)->select('id', 'thickness', 'weight', 'price')->get();
-         }
-         
-      return response()->json(['status' => 'success', 'data' => ['subCategories'=>$subCategories,'test'=>'helloo', 'products'=>$products]]);
-    }
-    
-    
-    private function subCategoryOtherProducts($id){
-         $products=Product::where([['subcategory_id', $id],['status',true]])->get();
-         foreach($products as $product){
-              $product->category_price=CategoryPrice::where('category_id',$id)->value('price');
-               
 
-                $product->productAttributes = ProductAttribute::where('product_id', $product->id)->select('id', 'thickness', 'weight', 'price')->get();
-         }
-         
-        
-         
-      return response()->json(['status' => 'success', 'data' => $products]);
-        
-    }
-   
-    
-    
     public function category()
     {
 
@@ -141,8 +158,8 @@ else if($id==3) {
             $subcategory->count = Product::where([['status', true], ['subcategory_id', $subcategory->sub_category_id]])->count();
             $subcategory->subcategory_image = 'http://localhost:8000/storage/' . $subcategory->subcategory_image;
         }
-        
-    
+
+
 
         $subCategories = $subCategories->filter(function ($subcategory) {
             return  $subcategory->count > 0;
@@ -184,70 +201,5 @@ else if($id==3) {
         )->get();
 
         return response()->json(['status' => 'success',  'products' =>  $this->setupProducts($products)]);
-    }
-
-
-    protected function setupProducts($products)
-    {
-
-
-        $wislist = Wishlist::where('customer_id', auth()->user()->id)->first();
-
-        if ($wislist) {
-            $ws = $wislist->products;
-            if ($ws) $wislist = json_decode($ws);
-            else $wislist = [];
-        } else $wislist = [];
-
-
-        foreach ($products as $product) {
-            if ($product->category_id == 1) {;
-                $brands = Brand::whereIn('id', json_decode($product->brand))->where('status', true)->select('id', 'brand_name', 'price')->get();;
-                $tmtweight = Tmtdetail::find($product->thickness_id);
-                $product->weight = $tmtweight->weight;
-                $product->price_start = number_format($brands->min('price') * $tmtweight->weight, 2, '.', '');
-                $product->brands = $brands;
-                $product->is_wishlist = in_array($product->id, $wislist);
-            } else if ($product->category_id == 2) {
-
-
-                $p = CategoryPrice::where('category_id', $product->category_id)->first();
-                $product->category_price = $p->price;
-                $product->attributes = ProductAttribute::where('product_id', $product->id)->select('id', 'height',  'price')->get();
-                $low_price = ProductAttribute::where('product_id', $product->id)->orderBy(DB::raw('price * weight'), 'asc')
-                    ->first();
-                $product->low_price = $low_price->height * ($p->price + $low_price->price);
-                $product->is_wishlist = in_array($product->id, $wislist);
-            } else if ($product->category_id == 3) {
-
-                $p = CategoryPrice::where('category_id', $product->category_id)->first();
-                $product->category_price = $p->price;
-                $product->attributes = ProductAttribute::join('roofing_thicknesses', 'roofing_thicknesses.id', 'product_attributes.thickness')
-                    ->where('product_id', $product->id)->select('product_attributes.id', 'roofing_thicknesses.thickness',  'price', 'formula_value')->get();
-
-                $product->colors = RoofingColor::where('status', true)->get();
-                $low_price = ProductAttribute::where('product_id', $product->id)->orderBy('price', 'asc')
-                    ->value('price');
-                $product->low_price = ($p->price + $low_price) * 1.3;
-                $product->is_wishlist = in_array($product->id, $wislist);
-            } else {
-
-                if ($product->subcategory_id) {
-                    $subcategory = Subcategory::find($product->subcategory_id);
-                    $product->subcategory = $subcategory->subcategory_name;
-                }
-                $p = CategoryPrice::where('category_id', $product->category_id)->first();
-                $product->category_price = $p->price;
-
-                $product->attributes = ProductAttribute::where('product_id', $product->id)->select('id', 'thickness', 'weight', 'price')->get();
-                $low_price = ProductAttribute::where('product_id', $product->id)->orderBy(DB::raw('price * weight'), 'asc')
-                    ->first();
-                $product->low_price = $low_price->weight * ($p->price + $low_price->price);
-
-                $product->is_wishlist = in_array($product->id, $wislist);
-            }
-        }
-
-        return $products;
     }
 }
